@@ -236,20 +236,7 @@ footer { margin-top: 72px; border-top: 2px solid var(--outline); padding-block: 
 
   <section id="nhom">
     <div class="sec-head"><h2>Bạn đang tìm gì?</h2></div>
-    <div class="cats">
-      <div class="cat c-pink">
-        <h3>Đồ cho thú cưng</h3>
-        <p>Ổ nằm, bình nước, cây cào móng và đồ đi dạo cho chó mèo.</p>
-        <button class="btn" type="button" data-go="pet">Xem đồ thú cưng</button>
-        <svg class="big" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-paw"/></svg>
-      </div>
-      <div class="cat c-sky">
-        <h3>Đồ gia dụng</h3>
-        <p>Máy xay, đèn ngủ, lọc không khí và đồ dùng gọn gàng cho căn hộ.</p>
-        <button class="btn" type="button" data-go="home">Xem đồ gia dụng</button>
-        <svg class="big" viewBox="0 0 48 48" aria-hidden="true" style="color:inherit"><use href="#i-lamp"/></svg>
-      </div>
-    </div>
+    <div class="cats" id="cats"></div>
   </section>
 
   <section id="san-pham">
@@ -258,11 +245,7 @@ footer { margin-top: 72px; border-top: 2px solid var(--outline); padding-block: 
         <h2>Sản phẩm nổi bật</h2>
         <p>Bấm Shopee để đặt hàng, hoặc hỏi qua Zalo nếu bạn cần chọn kích cỡ, màu sắc hay so sánh giữa vài mẫu.</p>
       </div>
-      <div class="filters" role="group" aria-label="Lọc sản phẩm">
-        <button class="chip" type="button" data-filter="all" aria-pressed="true">Tất cả</button>
-        <button class="chip" type="button" data-filter="pet" aria-pressed="false">Đồ thú cưng</button>
-        <button class="chip" type="button" data-filter="home" aria-pressed="false">Đồ gia dụng</button>
-      </div>
+      <div class="filters" id="filters" role="group" aria-label="Lọc sản phẩm"></div>
     </div>
     <div class="grid" id="grid"></div>
     <p class="note" id="note">Đây là sản phẩm mẫu để xem bố cục. Tên, giá và ảnh sẽ được thay bằng sản phẩm thật của shop.</p>
@@ -333,7 +316,7 @@ footer { margin-top: 72px; border-top: 2px solid var(--outline); padding-block: 
 
   <footer>
     <span>© <span id="year">2026</span> linhLink Pet House</span>
-    <span>Đồ gia dụng &amp; đồ cho thú cưng</span>
+    <span>Đồ gia dụng &amp; đồ cho thú cưng · <a href="admin.html" rel="nofollow">Quản trị</a></span>
   </footer>
 </div>
 
@@ -352,39 +335,51 @@ footer { margin-top: 72px; border-top: 2px solid var(--outline); padding-block: 
   var ZALO = "https://zalo.me/0900000099";
   var TONES = ["yellow", "pink", "sky", "mint"];
   var ICONS = ["paw", "fountain", "bed", "scratch", "collar", "blender", "lamp", "purifier", "bottle"];
-  var label = { pet: "Thú cưng", home: "Gia dụng" };
-  var SAMPLE = [
-    { category: "pet",  tone: "pink",   icon: "fountain", name: "Máy lọc nước tự động cho mèo",  price: 590000 },
-    { category: "pet",  tone: "yellow", icon: "bed",      name: "Giường nằm memory foam cao cấp", price: 690000 },
-    { category: "pet",  tone: "mint",   icon: "scratch",  name: "Cây cào móng kiêm tổ ấm",       price: 890000 },
-    { category: "pet",  tone: "sky",    icon: "collar",   name: "Bộ yếm và dây dắt đi dạo",       price: 390000 },
-    { category: "home", tone: "sky",    icon: "blender",  name: "Máy xay mini không dây",         price: 790000 },
-    { category: "home", tone: "yellow", icon: "lamp",     name: "Đèn ngủ cảm ứng đổi màu",        price: 450000 },
-    { category: "home", tone: "mint",   icon: "purifier", name: "Máy lọc không khí mini",         price: 1290000 },
-    { category: "home", tone: "pink",   icon: "bottle",   name: "Bình giữ nhiệt 500 ml",          price: 420000 }
+  var FAIL = "Chưa tải được danh sách sản phẩm lúc này. Bạn có thể xem toàn bộ sản phẩm trên Shopee.";
+  var SAMPLE_CATS = [
+    { id: 1, name: "Đồ thú cưng", description: "Ổ nằm, bình nước, cây cào móng và đồ đi dạo cho chó mèo.", tone: "pink", icon: "paw" },
+    { id: 2, name: "Đồ gia dụng", description: "Máy xay, đèn ngủ, lọc không khí và đồ dùng gọn gàng cho căn hộ.", tone: "sky", icon: "lamp" }
   ];
-  var state = { items: SAMPLE, sample: true, filter: "all" };
+  var SAMPLE = [
+    { category_id: 1, tone: "pink",   icon: "fountain", name: "Máy lọc nước tự động cho mèo",  price: 590000 },
+    { category_id: 1, tone: "yellow", icon: "bed",      name: "Giường nằm memory foam cao cấp", price: 690000 },
+    { category_id: 1, tone: "mint",   icon: "scratch",  name: "Cây cào móng kiêm tổ ấm",       price: 890000 },
+    { category_id: 1, tone: "sky",    icon: "collar",   name: "Bộ yếm và dây dắt đi dạo",       price: 390000 },
+    { category_id: 2, tone: "sky",    icon: "blender",  name: "Máy xay mini không dây",         price: 790000 },
+    { category_id: 2, tone: "yellow", icon: "lamp",     name: "Đèn ngủ cảm ứng đổi màu",        price: 450000 },
+    { category_id: 2, tone: "mint",   icon: "purifier", name: "Máy lọc không khí mini",         price: 1290000 },
+    { category_id: 2, tone: "pink",   icon: "bottle",   name: "Bình giữ nhiệt 500 ml",          price: 420000 }
+  ];
+  var state = { cats: SAMPLE_CATS, items: SAMPLE, sample: true, failed: false, filter: "all" };
   var grid = document.getElementById("grid");
   var note = document.getElementById("note");
+  var catsBox = document.getElementById("cats");
+  var catsSec = document.getElementById("nhom");
+  var filtersBox = document.getElementById("filters");
 
   function vnd(n) { return Number(n).toLocaleString("vi-VN") + "đ"; }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function httpsUrl(u) { try { var x = new URL(u); return x.protocol === "https:" ? x.href : ""; } catch (e) { return ""; } }
-  function icon(name) {
+  function tone(t) { return TONES.indexOf(t) >= 0 ? t : "yellow"; }
+  function icon(name, cls) {
     var NS = "http://www.w3.org/2000/svg";
     var s = document.createElementNS(NS, "svg"); s.setAttribute("aria-hidden", "true");
-    var u = document.createElementNS(NS, "use"); u.setAttribute("href", "#i-" + name); s.appendChild(u);
+    if (cls) s.setAttribute("class", cls);
+    if (cls === "big") s.setAttribute("viewBox", "0 0 48 48");
+    var u = document.createElementNS(NS, "use"); u.setAttribute("href", "#i-" + (ICONS.indexOf(name) >= 0 ? name : "paw")); s.appendChild(u);
     return s;
   }
   function link(href, cls, text) { var a = el("a", cls, text); a.href = href; a.target = "_blank"; a.rel = "noopener"; return a; }
+  function catName(id) {
+    for (var i = 0; i < state.cats.length; i++) if (state.cats[i].id === id) return state.cats[i].name;
+    return "";
+  }
 
   function card(p) {
-    var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : "yellow";
-    var ic = ICONS.indexOf(p.icon) >= 0 ? p.icon : "paw";
     var art = el("article", "card");
-    var img = el("div", "img c-" + tone);
+    var img = el("div", "img c-" + tone(p.tone));
     if (state.sample) img.appendChild(el("span", "tag", "Hàng mẫu"));
-    var fallback = function () { img.appendChild(icon(ic)); };
+    var fallback = function () { img.appendChild(icon(p.icon)); };
     var photo = httpsUrl(p.image_url || "");
     if (photo) {
       var im = document.createElement("img");
@@ -393,7 +388,7 @@ footer { margin-top: 72px; border-top: 2px solid var(--outline); padding-block: 
       img.appendChild(im);
     } else { fallback(); }
     var body = el("div", "body");
-    body.appendChild(el("span", "eyebrow", label[p.category] || ""));
+    body.appendChild(el("span", "eyebrow", catName(p.category_id)));
     body.appendChild(el("h3", null, p.name));
     body.appendChild(el("div", "price", vnd(p.price)));
     var actions = el("div", "actions");
@@ -409,36 +404,71 @@ footer { margin-top: 72px; border-top: 2px solid var(--outline); padding-block: 
     box.appendChild(link(SHOP, "btn small primary", "Xem trên Shopee"));
     return box;
   }
-  function render(emptyText) {
+  function renderGrid() {
     grid.textContent = "";
-    var list = state.items.filter(function (p) { return state.filter === "all" || p.category === state.filter; });
-    if (!list.length) { grid.appendChild(emptyBox(emptyText || "Chưa có sản phẩm trong nhóm này.")); return; }
+    var list = state.items.filter(function (p) { return state.filter === "all" || String(p.category_id) === state.filter; });
+    if (!list.length) { grid.appendChild(emptyBox(state.failed ? FAIL : "Chưa có sản phẩm trong nhóm này.")); return; }
     list.forEach(function (p) { grid.appendChild(card(p)); });
   }
-
-  var chips = document.querySelectorAll(".chip");
   function setFilter(f) {
     state.filter = f;
-    chips.forEach(function (o) { o.setAttribute("aria-pressed", o.getAttribute("data-filter") === f ? "true" : "false"); });
-    render(state.failed ? "Chưa tải được danh sách sản phẩm lúc này. Bạn có thể xem toàn bộ sản phẩm trên Shopee." : null);
+    filtersBox.querySelectorAll(".chip").forEach(function (o) { o.setAttribute("aria-pressed", o.getAttribute("data-filter") === f ? "true" : "false"); });
+    renderGrid();
   }
-  chips.forEach(function (c) { c.addEventListener("click", function () { setFilter(c.getAttribute("data-filter")); }); });
-  document.querySelectorAll("[data-go]").forEach(function (b) {
-    b.addEventListener("click", function () {
-      setFilter(b.getAttribute("data-go"));
-      document.getElementById("san-pham").scrollIntoView({ behavior: "smooth", block: "start" });
+  function renderCats() {
+    filtersBox.textContent = ""; catsBox.textContent = "";
+    var make = function (label, key) {
+      var b = el("button", "chip", label); b.type = "button"; b.setAttribute("data-filter", key);
+      b.setAttribute("aria-pressed", key === state.filter ? "true" : "false");
+      b.addEventListener("click", function () { setFilter(key); });
+      filtersBox.appendChild(b);
+    };
+    make("Tất cả", "all");
+    state.cats.forEach(function (c) {
+      make(c.name, String(c.id));
+      var box = el("div", "cat c-" + tone(c.tone));
+      box.appendChild(el("h3", null, c.name));
+      if (c.description) box.appendChild(el("p", null, c.description));
+      var go = el("button", "btn", "Xem sản phẩm"); go.type = "button";
+      go.addEventListener("click", function () {
+        setFilter(String(c.id));
+        document.getElementById("san-pham").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      box.appendChild(go);
+      box.appendChild(icon(c.icon, "big"));
+      catsBox.appendChild(box);
     });
-  });
+    catsSec.hidden = state.cats.length < 2;
+    filtersBox.hidden = state.cats.length < 2;
+  }
+  function renderAll() { renderCats(); renderGrid(); }
 
-  /* Đọc sản phẩm từ Supabase. Chưa cấu hình thì hiện sản phẩm mẫu. */
+  /* Đọc nhóm và sản phẩm từ Supabase. Chưa cấu hình thì hiện sản phẩm mẫu. */
+  function get(path) {
+    return fetch(API + path, { headers: { apikey: KEY } }).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    });
+  }
   if (!API || !KEY) {
-    render();
+    renderAll();
   } else {
+    renderCats();
     grid.textContent = ""; grid.appendChild(el("div", "empty", "Đang tải sản phẩm..."));
-    fetch(API + "/rest/v1/products?select=id,name,category,price,image_url,tone,icon,shopee_url&is_active=eq.true&order=sort_order.asc,id.asc", { headers: { apikey: KEY } })
-      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(function (rows) { state.items = rows; state.sample = false; note.hidden = true; render(); })
-      .catch(function () { state.items = []; state.sample = false; state.failed = true; note.hidden = true; render("Chưa tải được danh sách sản phẩm lúc này. Bạn có thể xem toàn bộ sản phẩm trên Shopee."); });
+    Promise.all([
+      get("/rest/v1/categories?select=id,name,description,tone,icon&is_active=eq.true&order=sort_order.asc,id.asc"),
+      get("/rest/v1/products?select=id,name,category_id,price,image_url,tone,icon,shopee_url&is_active=eq.true&order=sort_order.asc,id.asc")
+    ]).then(function (res) {
+      var cats = res[0], ids = {};
+      cats.forEach(function (c) { ids[c.id] = true; });
+      state.cats = cats;
+      state.items = res[1].filter(function (p) { return ids[p.category_id]; });
+      state.sample = false; note.hidden = true;
+      renderAll();
+    }).catch(function () {
+      state.cats = []; state.items = []; state.sample = false; state.failed = true; note.hidden = true;
+      renderAll();
+    });
   }
 
   var copy = document.getElementById("copy");

@@ -87,7 +87,8 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
         <input type="hidden" id="f-id">
         <label class="span2">Tên sản phẩm<input type="text" id="f-name" maxlength="120" required></label>
         <label>Nhóm
-          <select id="f-cat"><option value="pet">Đồ thú cưng</option><option value="home">Đồ gia dụng</option></select>
+          <select id="f-cat"></select>
+          <span class="hint">Thêm, đổi tên hoặc ẩn nhóm trong Supabase: Table Editor, bảng categories. Sau đó tải lại trang này.</span>
         </label>
         <label>Giá (đồng)<input type="number" id="f-price" min="0" step="1000" inputmode="numeric" required></label>
         <label class="span2">Link sản phẩm trên Shopee
@@ -142,8 +143,8 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   var API = (cfg.SUPABASE_URL || "").replace(/\/+$/, "");
   var KEY = cfg.SUPABASE_KEY || "";
   var $ = function (id) { return document.getElementById(id); };
-  var CAT = { pet: "Thú cưng", home: "Gia dụng" };
   var session = null;
+  var cats = [];
   var items = [];
 
   function setMsg(el, text, kind) { el.textContent = text || ""; el.className = "msg" + (kind ? " " + kind : ""); el.hidden = !text; }
@@ -197,12 +198,30 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   function showApp() {
     $("login").hidden = true; $("app").hidden = false; $("who").hidden = false;
     $("whoEmail").textContent = session.email;
+    loadCats();
     loadList();
+  }
+
+  /* ---- Nhóm sản phẩm (bảng categories) ---- */
+  function loadCats() {
+    return api("/rest/v1/categories?select=id,name,is_active&order=sort_order.asc,id.asc").then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(errText(r, j, "Không tải được danh sách nhóm. Hãy chạy lại setup.sql."));
+        cats = j;
+        var sel = $("f-cat"), keep = sel.value;
+        sel.textContent = "";
+        cats.forEach(function (c) {
+          var o = el("option", null, c.name + (c.is_active ? "" : " (đang ẩn)")); o.value = String(c.id); sel.appendChild(o);
+        });
+        if (keep) sel.value = keep;
+        if (!cats.length) setMsg($("formMsg"), "Chưa có nhóm nào. Hãy thêm nhóm trong Table Editor, bảng categories.", "err");
+      });
+    }).catch(function (e) { if (e.message !== "expired") setMsg($("formMsg"), e.message, "err"); });
   }
 
   /* ---- Danh sách ---- */
   function loadList() {
-    return api("/rest/v1/products?select=*&order=sort_order.asc,id.asc").then(function (r) {
+    return api("/rest/v1/products?select=*,categories(name)&order=sort_order.asc,id.asc").then(function (r) {
       return r.json().then(function (j) {
         if (!r.ok) throw new Error(errText(r, j, "Không tải được danh sách"));
         items = j; renderList(); setMsg($("listMsg"), "");
@@ -218,7 +237,7 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
       var tr = el("tr");
       tr.appendChild(el("td", "num", String(p.sort_order)));
       tr.appendChild(el("td", null, p.name));
-      tr.appendChild(el("td", null, CAT[p.category] || p.category));
+      tr.appendChild(el("td", null, p.categories ? p.categories.name : "(chưa có nhóm)"));
       tr.appendChild(el("td", "num", vnd(p.price)));
       tr.appendChild(el("td", null, p.image_url ? "Ảnh thật" : "Minh họa"));
       var st = el("td"); st.appendChild(el("span", "pill " + (p.is_active ? "on" : "off"), p.is_active ? "Đang bán" : "Đã ẩn")); tr.appendChild(st);
@@ -245,7 +264,7 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
     $("formTitle").textContent = "Thêm sản phẩm"; $("cancelBtn").hidden = true;
   }
   function startEdit(p) {
-    $("f-id").value = p.id; $("f-name").value = p.name; $("f-cat").value = p.category; $("f-price").value = p.price;
+    $("f-id").value = p.id; $("f-name").value = p.name; $("f-cat").value = String(p.category_id); $("f-price").value = p.price;
     $("f-shopee").value = p.shopee_url || ""; $("f-image").value = p.image_url || "";
     $("f-tone").value = p.tone; $("f-icon").value = p.icon; $("f-sort").value = p.sort_order; $("f-active").checked = !!p.is_active;
     $("formTitle").textContent = "Sửa sản phẩm"; $("cancelBtn").hidden = false;
@@ -255,13 +274,15 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
     var name = $("f-name").value.trim();
     var price = Number($("f-price").value);
     var shopee = $("f-shopee").value.trim(), image = $("f-image").value.trim();
+    var catId = parseInt($("f-cat").value, 10);
     if (!name) throw new Error("Hãy nhập tên sản phẩm.");
+    if (isNaN(catId)) throw new Error("Hãy chọn nhóm. Nếu chưa có nhóm, thêm trong Table Editor, bảng categories.");
     if (!Number.isInteger(price) || price < 0) throw new Error("Giá phải là số nguyên từ 0 trở lên.");
     if (shopee && !isHttps(shopee)) throw new Error("Link Shopee phải bắt đầu bằng https://");
     if (image && !isHttps(image)) throw new Error("Link ảnh phải bắt đầu bằng https://");
     var sort = parseInt($("f-sort").value, 10);
     return {
-      name: name, category: $("f-cat").value, price: price, shopee_url: shopee || null, image_url: image || null,
+      name: name, category_id: catId, price: price, shopee_url: shopee || null, image_url: image || null,
       tone: $("f-tone").value, icon: $("f-icon").value, sort_order: isNaN(sort) ? 0 : sort, is_active: $("f-active").checked
     };
   }
