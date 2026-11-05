@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Quản lý sản phẩm · linhLink Pet House</title>
+<style>
+:root {
+  --bg: #f5f9ff; --surface: #ffffff; --ink: #16213e; --muted: #4f5d7c; --line: #cfd8ea;
+  --accent: #ffd23f; --on-accent: #16213e; --danger: #b3261e; --ok: #1b6b46;
+  --font: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11172c; --surface: #1a2240; --ink: #f1f4ff; --muted: #a8b3d3; --line: #33406b;
+    --accent: #f7c92f; --danger: #ff8a80; --ok: #7fdcae; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11172c; --surface: #1a2240; --ink: #f1f4ff; --muted: #a8b3d3; --line: #33406b;
+  --accent: #f7c92f; --danger: #ff8a80; --ok: #7fdcae; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5;
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+.wrap { max-width: 980px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font-size: 24px; margin: 0; }
+h2 { font-size: 18px; margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; min-width: 0; }
+label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 13px; min-width: 0; }
+input, select, button { font: inherit; }
+input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="url"], select {
+  min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; font-weight: 400;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 700px) { .grid { grid-template-columns: 1fr 1fr; } .span2 { grid-column: 1 / -1; } }
+.check { flex-direction: row; align-items: center; gap: 8px; font-weight: 600; }
+.check input { width: 18px; height: 18px; }
+.btn { min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--ink); background: var(--surface); color: var(--ink); font-weight: 600; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--ink); }
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.small { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.btn[disabled] { opacity: .6; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.msg { margin: 10px 0 0; font-size: 14px; }
+.msg.err { color: var(--danger); } .msg.ok { color: var(--ok); }
+.hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 640px; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+.pill.on { border-color: var(--ok); color: var(--ok); } .pill.off { color: var(--muted); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Quản lý sản phẩm</h1>
+    <div class="row" id="who" hidden>
+      <span id="whoEmail" class="hint"></span>
+      <button class="btn small" type="button" id="logout">Đăng xuất</button>
+    </div>
+  </header>
+
+  <p class="card msg err" id="cfgMsg" hidden>Chưa cấu hình kết nối. Hãy điền SUPABASE_URL và SUPABASE_KEY trong file config.js.</p>
+
+  <section class="card" id="login" hidden style="max-width:420px">
+    <h2>Đăng nhập quản trị</h2>
+    <form id="loginForm" class="grid" style="grid-template-columns:1fr">
+      <label>Email<input type="email" id="email" autocomplete="username" required></label>
+      <label>Mật khẩu<input type="password" id="password" autocomplete="current-password" required></label>
+      <div class="row"><button class="btn primary" type="submit" id="loginBtn">Đăng nhập</button></div>
+    </form>
+    <p class="msg" id="loginMsg" hidden></p>
+  </section>
+
+  <div id="app" hidden style="display:flex;flex-direction:column;gap:20px">
+    <section class="card">
+      <h2 id="formTitle">Thêm sản phẩm</h2>
+      <form id="prodForm" class="grid" novalidate>
+        <input type="hidden" id="f-id">
+        <label class="span2">Tên sản phẩm<input type="text" id="f-name" maxlength="120" required></label>
+        <label>Nhóm
+          <select id="f-cat"><option value="pet">Đồ thú cưng</option><option value="home">Đồ gia dụng</option></select>
+        </label>
+        <label>Giá (đồng)<input type="number" id="f-price" min="0" step="1000" inputmode="numeric" required></label>
+        <label class="span2">Link sản phẩm trên Shopee
+          <input type="url" id="f-shopee" placeholder="https://shopee.vn/...">
+          <span class="hint">Để trống thì nút Shopee dẫn về trang gian hàng chung.</span>
+        </label>
+        <label class="span2">Link ảnh sản phẩm
+          <input type="url" id="f-image" placeholder="https://...">
+          <span class="hint">Dán link ảnh có sẵn, hoặc tải ảnh lên bên dưới (JPG, PNG, WebP, tối đa 2 MB). Để trống thì dùng ảnh minh họa.</span>
+        </label>
+        <div class="span2 row">
+          <input type="file" id="f-file" accept="image/jpeg,image/png,image/webp">
+          <button class="btn small" type="button" id="uploadBtn">Tải ảnh lên</button>
+        </div>
+        <label>Màu nền ảnh minh họa
+          <select id="f-tone"><option value="yellow">Vàng</option><option value="pink">Hồng</option><option value="sky">Xanh trời</option><option value="mint">Xanh bạc hà</option></select>
+        </label>
+        <label>Biểu tượng minh họa
+          <select id="f-icon">
+            <option value="paw">Dấu chân</option><option value="fountain">Máy lọc nước</option><option value="bed">Giường nằm</option>
+            <option value="scratch">Cây cào móng</option><option value="collar">Yếm, dây dắt</option><option value="blender">Máy xay</option>
+            <option value="lamp">Đèn</option><option value="purifier">Máy lọc không khí</option><option value="bottle">Bình giữ nhiệt</option>
+          </select>
+        </label>
+        <label>Thứ tự hiển thị<input type="number" id="f-sort" step="10" value="0"><span class="hint">Số nhỏ hiện trước.</span></label>
+        <label class="check"><input type="checkbox" id="f-active" checked>Đang bán (hiện trên trang)</label>
+        <div class="span2 row">
+          <button class="btn primary" type="submit" id="saveBtn">Lưu sản phẩm</button>
+          <button class="btn" type="button" id="cancelBtn" hidden>Hủy sửa</button>
+        </div>
+      </form>
+      <p class="msg" id="formMsg" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>Danh sách sản phẩm</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Thứ tự</th><th>Tên</th><th>Nhóm</th><th>Giá</th><th>Ảnh</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="msg" id="listMsg" hidden></p>
+    </section>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var cfg = window.LINHLINK_CONFIG || {};
+  var API = (cfg.SUPABASE_URL || "").replace(/\/+$/, "");
+  var KEY = cfg.SUPABASE_KEY || "";
+  var $ = function (id) { return document.getElementById(id); };
+  var CAT = { pet: "Thú cưng", home: "Gia dụng" };
+  var session = null;
+  var items = [];
+
+  function setMsg(el, text, kind) { el.textContent = text || ""; el.className = "msg" + (kind ? " " + kind : ""); el.hidden = !text; }
+  function vnd(n) { return Number(n).toLocaleString("vi-VN") + "đ"; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function isHttps(u) { return /^https:\/\//i.test(u); }
+
+  /* ---- Phiên đăng nhập: chỉ lưu trong tab này, tự xóa khi đóng tab ---- */
+  function loadSession() { try { var s = sessionStorage.getItem("ll_session"); session = s ? JSON.parse(s) : null; } catch (e) { session = null; } }
+  function saveSession(s) { session = s; try { if (s) sessionStorage.setItem("ll_session", JSON.stringify(s)); else sessionStorage.removeItem("ll_session"); } catch (e) {} }
+
+  function tokenReq(body, grant) {
+    return fetch(API + "/auth/v1/token?grant_type=" + grant, {
+      method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.error_description || j.msg || "Đăng nhập thất bại");
+        return j;
+      });
+    });
+  }
+  function toSession(j) {
+    return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, email: (j.user && j.user.email) || "" };
+  }
+  function ensureToken() {
+    if (!session) return Promise.reject(new Error("Chưa đăng nhập"));
+    if (session.expires_at - Date.now() > 60000) return Promise.resolve(session.access_token);
+    return tokenReq({ refresh_token: session.refresh_token }, "refresh_token").then(function (j) {
+      var s = toSession(j); if (!s.email) s.email = session.email; saveSession(s); return s.access_token;
+    }).catch(function () {
+      saveSession(null); showLogin("Phiên đăng nhập đã hết hạn, hãy đăng nhập lại."); throw new Error("expired");
+    });
+  }
+  function api(path, opts) {
+    opts = opts || {};
+    return ensureToken().then(function (tok) {
+      var h = Object.assign({ apikey: KEY, Authorization: "Bearer " + tok }, opts.headers || {});
+      return fetch(API + path, Object.assign({}, opts, { headers: h }));
+    });
+  }
+  function errText(r, j, fallback) {
+    if (r.status === 401 || r.status === 403) return "Tài khoản này không có quyền quản trị. Hãy kiểm tra email trong hàm is_admin của setup.sql.";
+    return (j && (j.message || j.error_description || j.error)) || fallback;
+  }
+
+  /* ---- Màn hình ---- */
+  function showLogin(msg) {
+    $("login").hidden = false; $("app").hidden = true; $("who").hidden = true;
+    setMsg($("loginMsg"), msg, msg ? "err" : "");
+  }
+  function showApp() {
+    $("login").hidden = true; $("app").hidden = false; $("who").hidden = false;
+    $("whoEmail").textContent = session.email;
+    loadList();
+  }
+
+  /* ---- Danh sách ---- */
+  function loadList() {
+    return api("/rest/v1/products?select=*&order=sort_order.asc,id.asc").then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(errText(r, j, "Không tải được danh sách"));
+        items = j; renderList(); setMsg($("listMsg"), "");
+      });
+    }).catch(function (e) { if (e.message !== "expired") setMsg($("listMsg"), e.message, "err"); });
+  }
+  function renderList() {
+    var body = $("rows"); body.textContent = "";
+    if (!items.length) {
+      var tr0 = el("tr"); var td0 = el("td", null, "Chưa có sản phẩm nào."); td0.colSpan = 7; tr0.appendChild(td0); body.appendChild(tr0); return;
+    }
+    items.forEach(function (p) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "num", String(p.sort_order)));
+      tr.appendChild(el("td", null, p.name));
+      tr.appendChild(el("td", null, CAT[p.category] || p.category));
+      tr.appendChild(el("td", "num", vnd(p.price)));
+      tr.appendChild(el("td", null, p.image_url ? "Ảnh thật" : "Minh họa"));
+      var st = el("td"); st.appendChild(el("span", "pill " + (p.is_active ? "on" : "off"), p.is_active ? "Đang bán" : "Đã ẩn")); tr.appendChild(st);
+      var act = el("td"); var row = el("div", "row");
+      var edit = el("button", "btn small", "Sửa"); edit.type = "button"; edit.addEventListener("click", function () { startEdit(p); });
+      var del = el("button", "btn small danger", "Xóa"); del.type = "button";
+      var armed = false, timer = null;
+      del.addEventListener("click", function () {
+        if (!armed) {
+          armed = true; del.textContent = "Bấm lần nữa để xóa";
+          timer = setTimeout(function () { armed = false; del.textContent = "Xóa"; }, 4000);
+          return;
+        }
+        clearTimeout(timer); removeItem(p);
+      });
+      row.appendChild(edit); row.appendChild(del); act.appendChild(row); tr.appendChild(act);
+      body.appendChild(tr);
+    });
+  }
+
+  /* ---- Form ---- */
+  function resetForm() {
+    $("prodForm").reset(); $("f-id").value = ""; $("f-active").checked = true; $("f-sort").value = "0";
+    $("formTitle").textContent = "Thêm sản phẩm"; $("cancelBtn").hidden = true;
+  }
+  function startEdit(p) {
+    $("f-id").value = p.id; $("f-name").value = p.name; $("f-cat").value = p.category; $("f-price").value = p.price;
+    $("f-shopee").value = p.shopee_url || ""; $("f-image").value = p.image_url || "";
+    $("f-tone").value = p.tone; $("f-icon").value = p.icon; $("f-sort").value = p.sort_order; $("f-active").checked = !!p.is_active;
+    $("formTitle").textContent = "Sửa sản phẩm"; $("cancelBtn").hidden = false;
+    setMsg($("formMsg"), ""); window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function readForm() {
+    var name = $("f-name").value.trim();
+    var price = Number($("f-price").value);
+    var shopee = $("f-shopee").value.trim(), image = $("f-image").value.trim();
+    if (!name) throw new Error("Hãy nhập tên sản phẩm.");
+    if (!Number.isInteger(price) || price < 0) throw new Error("Giá phải là số nguyên từ 0 trở lên.");
+    if (shopee && !isHttps(shopee)) throw new Error("Link Shopee phải bắt đầu bằng https://");
+    if (image && !isHttps(image)) throw new Error("Link ảnh phải bắt đầu bằng https://");
+    var sort = parseInt($("f-sort").value, 10);
+    return {
+      name: name, category: $("f-cat").value, price: price, shopee_url: shopee || null, image_url: image || null,
+      tone: $("f-tone").value, icon: $("f-icon").value, sort_order: isNaN(sort) ? 0 : sort, is_active: $("f-active").checked
+    };
+  }
+  function save(ev) {
+    ev.preventDefault();
+    var data;
+    try { data = readForm(); } catch (e) { setMsg($("formMsg"), e.message, "err"); return; }
+    var id = $("f-id").value;
+    var path = id ? "/rest/v1/products?id=eq." + encodeURIComponent(id) : "/rest/v1/products";
+    $("saveBtn").disabled = true;
+    api(path, { method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(data) })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) throw new Error(errText(r, j, "Lưu không thành công"));
+          if (id && Array.isArray(j) && !j.length) throw new Error("Không lưu được: tài khoản này không có quyền quản trị.");
+          setMsg($("formMsg"), "Đã lưu.", "ok"); resetForm(); return loadList();
+        });
+      })
+      .catch(function (e) { if (e.message !== "expired") setMsg($("formMsg"), e.message, "err"); })
+      .then(function () { $("saveBtn").disabled = false; });
+  }
+  function removeItem(p) {
+    api("/rest/v1/products?id=eq." + encodeURIComponent(p.id), { method: "DELETE", headers: { Prefer: "return=representation" } })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) throw new Error(errText(r, j, "Xóa không thành công"));
+          if (Array.isArray(j) && !j.length) throw new Error("Không xóa được: tài khoản này không có quyền quản trị.");
+          setMsg($("listMsg"), "Đã xóa \"" + p.name + "\".", "ok"); return loadList();
+        });
+      })
+      .catch(function (e) { if (e.message !== "expired") setMsg($("listMsg"), e.message, "err"); });
+  }
+
+  /* ---- Tải ảnh lên Supabase Storage ---- */
+  function upload() {
+    var f = $("f-file").files[0];
+    var ext = f && ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[f.type];
+    if (!f) { setMsg($("formMsg"), "Hãy chọn một ảnh trước.", "err"); return; }
+    if (!ext) { setMsg($("formMsg"), "Chỉ nhận ảnh JPG, PNG hoặc WebP.", "err"); return; }
+    if (f.size > 2 * 1024 * 1024) { setMsg($("formMsg"), "Ảnh lớn hơn 2 MB, hãy nén nhỏ lại.", "err"); return; }
+    var name = Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+    $("uploadBtn").disabled = true; setMsg($("formMsg"), "Đang tải ảnh lên...", "");
+    ensureToken().then(function (tok) {
+      return fetch(API + "/storage/v1/object/product-images/" + name, {
+        method: "POST", headers: { apikey: KEY, Authorization: "Bearer " + tok, "Content-Type": f.type, "x-upsert": "false" }, body: f
+      });
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(errText(r, j, "Tải ảnh lên không thành công"));
+        $("f-image").value = API + "/storage/v1/object/public/product-images/" + name;
+        $("f-file").value = ""; setMsg($("formMsg"), "Đã tải ảnh lên. Bấm Lưu sản phẩm để áp dụng.", "ok");
+      });
+    }).catch(function (e) { if (e.message !== "expired") setMsg($("formMsg"), e.message, "err"); })
+      .then(function () { $("uploadBtn").disabled = false; });
+  }
+
+  /* ---- Đăng nhập, đăng xuất ---- */
+  $("loginForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    $("loginBtn").disabled = true; setMsg($("loginMsg"), "Đang đăng nhập...", "");
+    tokenReq({ email: $("email").value.trim(), password: $("password").value }, "password")
+      .then(function (j) { saveSession(toSession(j)); $("password").value = ""; setMsg($("loginMsg"), ""); showApp(); })
+      .catch(function (e) { setMsg($("loginMsg"), e.message === "Invalid login credentials" ? "Email hoặc mật khẩu không đúng." : e.message, "err"); })
+      .then(function () { $("loginBtn").disabled = false; });
+  });
+  $("logout").addEventListener("click", function () {
+    var tok = session && session.access_token;
+    if (tok) fetch(API + "/auth/v1/logout", { method: "POST", headers: { apikey: KEY, Authorization: "Bearer " + tok } }).catch(function () {});
+    saveSession(null); items = []; resetForm(); showLogin("");
+  });
+  $("prodForm").addEventListener("submit", save);
+  $("cancelBtn").addEventListener("click", function () { resetForm(); setMsg($("formMsg"), ""); });
+  $("uploadBtn").addEventListener("click", upload);
+
+  if (!API || !KEY) { $("cfgMsg").hidden = false; return; }
+  loadSession();
+  if (session) showApp(); else showLogin("");
+})();
+</script>
+</body>
+</html>
