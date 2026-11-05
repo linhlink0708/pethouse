@@ -55,6 +55,9 @@ th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: v
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pill { display: inline-block; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
 .pill.on { border-color: var(--ok); color: var(--ok); } .pill.off { color: var(--muted); }
+.preview-row { display: flex; align-items: center; gap: 14px; }
+.preview { width: 72px; height: 72px; flex: none; border-radius: 14px; border: 1px solid var(--line); display: grid; place-items: center; color: #16213e; background: var(--bg); }
+.preview svg { width: 52%; height: 52%; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -96,15 +99,17 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
           <button class="btn small" type="button" id="uploadBtn">Tải ảnh lên</button>
         </div>
         <label>Màu nền ảnh minh họa
-          <select id="f-tone"><option value="yellow">Vàng</option><option value="pink">Hồng</option><option value="sky">Xanh trời</option><option value="mint">Xanh bạc hà</option></select>
+          <select id="f-tone"></select>
+          <span class="hint">Thêm hoặc đổi màu trong Table Editor, bảng tones.</span>
         </label>
-        <label>Biểu tượng minh họa
-          <select id="f-icon">
-            <option value="paw">Dấu chân</option><option value="fountain">Máy lọc nước</option><option value="bed">Giường nằm</option>
-            <option value="scratch">Cây cào móng</option><option value="collar">Yếm, dây dắt</option><option value="blender">Máy xay</option>
-            <option value="lamp">Đèn</option><option value="purifier">Máy lọc không khí</option><option value="bottle">Bình giữ nhiệt</option>
-          </select>
+        <label>Hình minh họa
+          <select id="f-icon"></select>
+          <span class="hint">Thêm hoặc đổi hình trong Table Editor, bảng icons.</span>
         </label>
+        <div class="span2 preview-row">
+          <div class="preview" id="preview" aria-hidden="true"></div>
+          <span class="hint">Xem trước màu và hình minh họa. Sản phẩm có ảnh thật sẽ hiện ảnh thay cho hình này.</span>
+        </div>
         <label>Thứ tự hiển thị<input type="number" id="f-sort" step="10" value="0"><span class="hint">Số nhỏ hiện trước.</span></label>
         <label class="check"><input type="checkbox" id="f-active" checked>Đang bán (hiện trên trang)</label>
         <div class="span2 row">
@@ -130,12 +135,15 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 <script src="config.js"></script>
 <script src="admin-auth.js"></script>
+<script src="appearance.js"></script>
 <script>
 (function () {
   var Auth = window.LLAuth;
   var $ = function (id) { return document.getElementById(id); };
   var cats = [];
   var items = [];
+  var tones = [];
+  var icons = [];
 
   function setMsg(el, text, kind) { el.textContent = text || ""; el.className = "msg" + (kind ? " " + kind : ""); el.hidden = !text; }
   function vnd(n) { return Number(n).toLocaleString("vi-VN") + "đ"; }
@@ -157,6 +165,45 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
         if (keep) sel.value = keep;
         if (!cats.length) setMsg($("formMsg"), "Chưa có nhóm nào. Hãy thêm nhóm trong Table Editor, bảng categories.", "err");
       });
+    }).catch(function (e) { show(e, $("formMsg")); });
+  }
+
+  /* ---- Màu (bảng tones) và hình minh họa (bảng icons) ---- */
+  function fillStyleSelects(curTone, curIcon) {
+    var fill = function (sel, rows, cur, fallbackLabel) {
+      var keep = cur != null ? cur : sel.value;
+      sel.textContent = "";
+      rows.forEach(function (r) {
+        if (!r.is_active && r.slug !== keep) return;
+        var o = el("option", null, r.label + (r.is_active ? "" : " (đang ẩn)")); o.value = r.slug; sel.appendChild(o);
+      });
+      if (keep && !Array.prototype.some.call(sel.options, function (o) { return o.value === keep; })) {
+        var o2 = el("option", null, keep + " " + fallbackLabel); o2.value = keep; sel.appendChild(o2);
+      }
+      if (keep) sel.value = keep;
+    };
+    fill($("f-tone"), tones, curTone, "(không còn trong bảng)");
+    fill($("f-icon"), icons, curIcon, "(không còn trong bảng)");
+    updatePreview();
+  }
+  function updatePreview() {
+    var box = $("preview"); box.textContent = "";
+    box.className = "preview c-" + (LLApp.safeSlug($("f-tone").value) || "yellow");
+    box.appendChild(LLApp.icon($("f-icon").value));
+  }
+  function loadStyles() {
+    var get = function (path) {
+      return Auth.api(path).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(Auth.errText(r, j, "Không tải được bảng màu và hình")); return j; });
+      });
+    };
+    return Promise.all([
+      get("/rest/v1/tones?select=slug,label,color,color_dark,is_active&order=sort_order.asc,slug.asc"),
+      get("/rest/v1/icons?select=slug,label,svg,is_active&order=sort_order.asc,slug.asc")
+    ]).then(function (res) {
+      tones = res[0]; icons = res[1];
+      LLApp.applyTones(tones); LLApp.setIcons(icons);
+      fillStyleSelects();
     }).catch(function (e) { show(e, $("formMsg")); });
   }
 
@@ -203,11 +250,12 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   function resetForm() {
     $("prodForm").reset(); $("f-id").value = ""; $("f-active").checked = true; $("f-sort").value = "0";
     $("formTitle").textContent = "Thêm sản phẩm"; $("cancelBtn").hidden = true;
+    fillStyleSelects();
   }
   function startEdit(p) {
     $("f-id").value = p.id; $("f-name").value = p.name; $("f-cat").value = String(p.category_id); $("f-price").value = p.price;
     $("f-shopee").value = p.shopee_url || ""; $("f-image").value = p.image_url || "";
-    $("f-tone").value = p.tone; $("f-icon").value = p.icon; $("f-sort").value = p.sort_order; $("f-active").checked = !!p.is_active;
+    fillStyleSelects(p.tone, p.icon); $("f-sort").value = p.sort_order; $("f-active").checked = !!p.is_active;
     $("formTitle").textContent = "Sửa sản phẩm"; $("cancelBtn").hidden = false;
     setMsg($("formMsg"), ""); window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -280,6 +328,8 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
       .then(function () { $("uploadBtn").disabled = false; });
   }
 
+  $("f-tone").addEventListener("change", updatePreview);
+  $("f-icon").addEventListener("change", updatePreview);
   $("prodForm").addEventListener("submit", save);
   $("cancelBtn").addEventListener("click", function () { resetForm(); setMsg($("formMsg"), ""); });
   $("uploadBtn").addEventListener("click", upload);
@@ -290,6 +340,7 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   if (!Auth.requireLogin()) return;
   $("app").hidden = false; $("who").hidden = false;
   $("whoEmail").textContent = Auth.email();
+  loadStyles();
   loadCats();
   loadList();
 })();
